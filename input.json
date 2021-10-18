@@ -1,0 +1,17 @@
+{
+ "bot_token": "xoxb-2615827845571-2640750236960-chYRGXKYzs2uNhwvZgDX19yy",
+ "channels": [
+   {
+     "channel": "test1",
+     "text": "Hello, world!"
+   },
+   {
+     "channel": "test2",
+     "text": "Hello, world?"
+   },
+   {
+     "channel": "test3",
+     "text": "Hello, world :)"
+   }
+ ]
+}
