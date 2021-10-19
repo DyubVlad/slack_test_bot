@@ -1,26 +1,76 @@
+import logging
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 from sys import argv
 import json
 
-def send_message_to_channel(token, channel, text):
-    client = WebClient(token=token)
+#logging.basicConfig(filename="output.log", filemode='w', level=logging.INFO)
+#logger = logging.getLogger()
 
+logger = logging.getLogger('logger')
+logger.setLevel(logging.DEBUG)
+ch = logging.FileHandler('output.log', mode='w')
+ch.setLevel(logging.DEBUG)
+
+strfmt = '[%(asctime)s] [%(funcName)s] [%(levelname)s] > %(message)s'
+datefmt = '%Y-%m-%d %H:%M:%S'
+formatter = logging.Formatter(fmt=strfmt, datefmt=datefmt)
+ch.setFormatter(formatter)
+logger.addHandler(ch)
+conversations_store = {}
+
+
+def fetch_conversations(client):
+    try:
+        result = client.conversations_list()
+        save_conversations(result["channels"])
+
+    except SlackApiError as e:
+        logger.error("Error fetching conversations: {}".format(e))
+
+
+def save_conversations(conversations):
+    for conversation in conversations:
+        conversation_name = conversation["name"]
+        conversations_store[conversation_name] = conversation
+
+
+def try_join_to_channel(client, channel):
+    try:
+        response = client.conversations_join(channel=conversations_store[channel]['id'])
+    except SlackApiError as e:
+        if e.response['error'] == 'missing_scope':
+            logger.error('if you want the bot to be able to invite, need to install scoop channels:join')
+        else:
+            logging.error(f"Got an join error: {e.response['error']}")
+    except KeyError as e:
+        logger.error('Channel with name ' + channel + ' not found in list of public channel')
+
+
+def send_message_to_channel(client, channel, text):
+    try_join_to_channel(client, channel)
     try:
         response = client.chat_postMessage(channel=channel, text=text)
+        if response.data['ok']:
+            logger.info('message has been sent to channel ' + channel)
     except SlackApiError as e:
-        print(f"Got an error: {e.response['error']}")
+        if e.response['error'] == 'channel_not_found':
+            logger.error('Channel with name "' + channel + '" not found in workspace')
+        else:
+            logger.error(f"Got an postMess error: {e.response['error']}")
+
 
 try:
     script, json_file = argv
 except Exception as e:
-    print(f"Got an error: {e}")
-    pass
+    logger.error(f"Got an error: {e}")
 
 with open(json_file, 'r') as json_f:
     json_from_file = json_f.read()
 parsed_json = json.loads(json_from_file)
 
+client = WebClient(token=parsed_json['bot_token'])
+fetch_conversations(client)
 for channels in parsed_json['channels']:
-    send_message_to_channel(parsed_json['bot_token'], channels['channel'], channels['text'])
+    send_message_to_channel(client, channels['channel'], channels['text'])
 print()
