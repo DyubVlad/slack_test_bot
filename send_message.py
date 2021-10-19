@@ -18,21 +18,24 @@ logger.addHandler(ch)
 conversations_store = {}
 
 
+# Получение списка публичных каналов рабочего пространства
+# требуется channels:read scope для бота
 def fetch_conversations(client):
     try:
         result = client.conversations_list()
         save_conversations(result["channels"])
-
     except SlackApiError as e:
         logger.error("Error fetching conversations: {}".format(e))
 
 
+# Полученный список каналов записывается в словарь
 def save_conversations(conversations):
     for conversation in conversations:
         conversation_name = conversation["name"]
         conversations_store[conversation_name] = conversation
 
-
+# Функция отправляет в Slack запрос на присоединения бота в канал
+# требуется channels:join scope для бота
 def try_join_to_channel(client, channel):
     try:
         response = client.conversations_join(channel=conversations_store[channel]['id'])
@@ -45,6 +48,8 @@ def try_join_to_channel(client, channel):
         logger.error('Channel with name ' + channel + ' not found in list of public channel')
 
 
+# Функция отправляет в Slack запрос на отправку сообщения в канал с указанным именем
+# требуется chat:write scope для бота
 def send_message_to_channel(client, channel, text):
     try_join_to_channel(client, channel)
     try:
@@ -52,10 +57,7 @@ def send_message_to_channel(client, channel, text):
         if response.data['ok']:
             logger.info('message has been sent to channel ' + channel)
     except SlackApiError as e:
-        if e.response['error'] == 'channel_not_found':
-            logger.error('Channel with name "' + channel + '" not found in workspace')
-        else:
-            logger.error(f"Got an postMess error: {e.response['error']}")
+        logger.error(f"Got an postMess error: {e.response['error']}")
 
 
 try:
@@ -71,4 +73,3 @@ client = WebClient(token=parsed_json['bot_token'])
 fetch_conversations(client)
 for channels in parsed_json['channels']:
     send_message_to_channel(client, channels['channel'], channels['text'])
-print()
