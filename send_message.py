@@ -4,8 +4,6 @@ from slack_sdk.errors import SlackApiError
 from sys import argv
 import json
 
-#logging.basicConfig(filename="output.log", filemode='w', level=logging.INFO)
-#logger = logging.getLogger()
 
 logger = logging.getLogger('logger')
 logger.setLevel(logging.DEBUG)
